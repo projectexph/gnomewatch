@@ -1,0 +1,26 @@
+name: build
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Config (public values only)
+        shell: pwsh
+        run: |
+          '{"api": "${{ vars.GW_API }}", "invite": "${{ vars.GW_INVITE }}"}' | Out-File -Encoding utf8 gw_config.json
+      - run: python packaging/build.py
+      - name: SHA-256
+        shell: pwsh
+        run: Get-FileHash packaging/dist/Gnomewatch-Setup.exe -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gnomewatch-Setup
+          path: packaging/dist/Gnomewatch-Setup.exe

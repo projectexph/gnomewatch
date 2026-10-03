@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="sentinel-token" content="__TOKEN__">
+<meta name="sentinel-readonly" content="__READONLY__">
+<title>Gnome Sentinel</title>
+<link rel="icon" href="/assets/icon256.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1b2b4b; --cream:#fffdf6; --sky:#6ec6ff; --sky2:#2f8fe8; --grass:#58c84a; --grass2:#37a03a;
+  --gold:#ffc83d; --gold2:#e59f00; --brick:#b8553a; --red:#ff5d5d; --mute:#5d6b86;
+  --shadow:0 5px 0 var(--ink);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:"Fredoka","Trebuchet MS","Segoe UI",system-ui,sans-serif; color:var(--ink);
+  background:linear-gradient(180deg,#7bcaff 0%,#bfe7ff 38%,#e6f6ff 62%,#a9e37e 100%) fixed;
+  min-height:100vh;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:18px 16px 60px}
+
+/* ---------- hero ---------- */
+.hero{
+  position:relative; border:4px solid var(--ink); border-radius:26px; overflow:hidden; box-shadow:var(--shadow);
+  background:#9bd5ff url(/assets/hero.jpg) center/cover; min-height:210px; display:flex; align-items:flex-end;
+}
+.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,30,60,.82) 0%,rgba(15,30,60,.45) 45%,rgba(15,30,60,0) 78%)}
+.hero-in{position:relative;display:flex;gap:18px;align-items:center;padding:20px 22px;width:100%}
+.icon{width:118px;height:118px;border-radius:26px;border:4px solid #fff;box-shadow:0 5px 0 var(--ink),0 0 0 4px var(--ink);transform:rotate(-4deg);background:url(/assets/icon256.jpg) center/cover;flex:none}
+.hero h1{margin:0;font-size:clamp(28px,5vw,46px);line-height:1;color:#fff;font-weight:700;
+  -webkit-text-stroke:2px var(--ink);paint-order:stroke fill;text-shadow:0 4px 0 var(--ink);letter-spacing:.5px}
+.hero p{margin:8px 0 0;color:#e8f3ff;font-weight:500;font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:7px;background:var(--cream);border:3px solid var(--ink);border-radius:999px;padding:3px 12px;font-weight:600;font-size:13px;box-shadow:0 3px 0 var(--ink)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--mute);display:inline-block}
+.dot.ok{background:var(--grass2);box-shadow:0 0 0 3px rgba(88,200,74,.35)}
+.dot.bad{background:var(--red);box-shadow:0 0 0 3px rgba(255,93,93,.35)}
+.dot.warn{background:var(--gold2);box-shadow:0 0 0 3px rgba(255,200,61,.4)}
+
+/* ---------- grid + cards ---------- */
+.grid{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;margin-top:18px}
+@media(max-width:860px){.grid{grid-template-columns:1fr}.icon{width:84px;height:84px}}
+.card{background:var(--cream);border:4px solid var(--ink);border-radius:24px;box-shadow:var(--shadow);padding:18px 20px}
+.card h2{margin:0 0 12px;font-size:15px;letter-spacing:1.4px;text-transform:uppercase;color:var(--mute);font-weight:600}
+.span2{grid-column:1/-1}
+
+/* ---------- board ---------- */
+.board{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.ringbox{position:relative;width:170px;height:170px;flex:none}
+.ringbox svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ringbox .trk{fill:none;stroke:#e5ecf6;stroke-width:14}
+.ringbox .bar{fill:none;stroke-width:14;stroke-linecap:round;transition:stroke-dashoffset .9s linear,stroke .3s}
+.ringtxt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ringtxt b{font-size:38px;line-height:1;font-weight:700}
+.ringtxt span{font-size:12px;color:var(--mute);font-weight:600;letter-spacing:1px;margin-top:4px}
+.badge{display:inline-block;border:3px solid var(--ink);border-radius:12px;padding:2px 12px;font-weight:700;font-size:13px;letter-spacing:1.2px;box-shadow:0 3px 0 var(--ink)}
+.badge.active{background:var(--gold)}
+.badge.next{background:var(--sky)}
+.badge.none{background:#dfe6f1}
+.evname{font-size:clamp(26px,4vw,38px);font-weight:700;margin:10px 0 2px;line-height:1.05}
+.sub{color:var(--mute);font-size:14px;font-weight:500}
+.frame{width:100%;border:3px solid var(--ink);border-radius:16px;display:block;background:#dfe9f5;aspect-ratio:16/10;object-fit:cover}
+
+/* ---------- instances ---------- */
+.inst{display:flex;align-items:center;gap:12px;border:3px solid var(--ink);border-radius:16px;padding:10px 12px;margin-bottom:10px;background:#fff}
+.inst .meta{flex:1;min-width:0}
+.inst .t{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inst .s{font-size:12.5px;color:var(--mute);font-weight:500}
+.pill{font-weight:700;font-size:11px;border-radius:999px;padding:1px 9px;border:2px solid var(--ink);margin-left:6px;vertical-align:middle}
+.pill.isb{background:var(--grass)}.pill.hidden{background:#dfe6f1}.pill.mini{background:var(--gold)}
+button{font-family:inherit;cursor:pointer}
+.btn{border:3px solid var(--ink);border-radius:14px;background:#fff;color:var(--ink);font-weight:700;font-size:14px;padding:7px 14px;box-shadow:0 4px 0 var(--ink);transition:transform .06s,box-shadow .06s,filter .15s}
+.btn:hover{filter:brightness(1.05)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn.danger{background:#ffb4b4}
+.btn.go{background:var(--grass)}.btn.warn{background:var(--gold)}.btn.blue{background:var(--sky)}
+.btn.big{width:100%;font-size:18px;padding:12px 16px;border-radius:18px}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.4)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.row .btn{flex:1}
+.empty{border:3px dashed #a9b7cf;border-radius:16px;padding:18px;text-align:center;color:var(--mute);font-weight:500}
+
+/* ---------- health ---------- */
+.hl{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:2px dashed #d6dfec;font-weight:500}
+.hl:last-of-type{border-bottom:0}
+.hl b{font-weight:700}
+.sw{display:flex;gap:10px;margin-top:12px}
+.sw .btn{flex:1}
+.sw .btn.on{background:var(--gold)}
+
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(90px);background:var(--ink);color:#fff;padding:10px 20px;border-radius:14px;font-weight:600;transition:transform .25s;z-index:9}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.ro #card-inst,.ro #card-frame,.ro .sw{display:none}
+.share{margin-top:12px;border:3px dashed #a9b7cf;border-radius:14px;padding:9px 12px;font-size:13px;font-weight:500;display:none}
+.share code{display:block;margin:5px 0;font-size:12px;word-break:break-all;color:var(--sky2);font-weight:600}
+.foot{text-align:center;color:#2e5a2a;font-weight:600;margin-top:26px;font-size:13px}
+
+/* ---------- event scenes: the page changes with the event that is on ---------- */
+body{transition:background 1s}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+#fx::before,#fx::after{content:"";position:absolute;inset:0;opacity:0;transition:opacity 1s}
+.wrap{position:relative;z-index:1}
+body[class*="t-"] #fx::before,body[class*="t-"] #fx::after{opacity:1}
+body.t-aurora,body.t-lightning,body.t-toxic,body.t-cursed{--foot:#dbe6ff}
+body.t-solar,body.t-candy{--foot:#5a3512}
+.foot{color:var(--foot,#2e5a2a)}
+.pv{border:0;background:rgba(255,255,255,.55);border-radius:10px;font-size:18px;padding:2px 8px;margin:0 2px;cursor:pointer;transition:transform .12s}
+.pv:hover{transform:translateY(-3px) scale(1.12)}
+.previews{text-align:center;margin-top:10px;font-size:12px;color:var(--foot,#2e5a2a);font-weight:600}
+
+/* aurora: shimmering green/violet curtains */
+body.t-aurora{background:linear-gradient(180deg,#07121f 0%,#0c3a3a 48%,#1b1a4a 100%) fixed}
+body.t-aurora #fx::before{inset:-25%;background:radial-gradient(60% 38% at 28% 32%,rgba(92,255,196,.55),transparent 62%),radial-gradient(50% 34% at 72% 26%,rgba(150,120,255,.50),transparent 62%);filter:blur(28px);animation:aur 9s ease-in-out infinite alternate}
+body.t-aurora #fx::after{inset:-25%;background:radial-gradient(40% 30% at 55% 45%,rgba(120,255,220,.30),transparent 60%);filter:blur(34px);animation:aur 13s ease-in-out infinite alternate-reverse}
+@keyframes aur{from{transform:translateX(-7%) skewX(-5deg) scaleY(.95)}to{transform:translateX(7%) skewX(5deg) scaleY(1.08)}}
+
+/* lightning storm: dark sky, rain, flashes */
+body.t-lightning{background:linear-gradient(180deg,#141a2b 0%,#27324d 55%,#3a4666 100%) fixed}
+body.t-lightning #fx::before{background:#eaf2ff;animation:flash 6.5s infinite}
+body.t-lightning #fx::after{background:repeating-linear-gradient(104deg,rgba(190,210,255,0) 0 10px,rgba(190,210,255,.13) 10px 11px);background-size:100% 220px;animation:rain .55s linear infinite}
+@keyframes flash{0%,90%,100%{opacity:0}91%{opacity:.55}92%{opacity:.05}93.5%{opacity:.42}96%{opacity:0}}
+@keyframes rain{to{background-position:-40px 220px}}
+
+/* solar flare: hot sun glow */
+body.t-solar{background:linear-gradient(180deg,#ff8a2b 0%,#ffc857 52%,#ffeab8 100%) fixed}
+body.t-solar #fx::before{background:radial-gradient(circle at 82% 8%,rgba(255,250,190,.95),rgba(255,214,102,.55) 22%,transparent 46%);animation:sunpulse 3.6s ease-in-out infinite}
+body.t-solar #fx::after{background:radial-gradient(circle at 12% 95%,rgba(255,120,40,.35),transparent 40%);animation:sunpulse 5s ease-in-out infinite reverse}
+@keyframes sunpulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.12);opacity:1}}
+
+/* candy land: pastel with drifting sprinkles */
+body.t-candy{background:linear-gradient(180deg,#ffb8de 0%,#ffe0f0 48%,#c3f5e2 100%) fixed}
+body.t-candy #fx::before{background:radial-gradient(circle,#ff5fa8 0 3px,transparent 4px) 0 0/90px 90px,radial-gradient(circle,#5fd6ff 0 3px,transparent 4px) 45px 20px/110px 110px,radial-gradient(circle,#ffd54d 0 3px,transparent 4px) 20px 60px/130px 130px,radial-gradient(circle,#9c6bff 0 3px,transparent 4px) 70px 40px/150px 150px;animation:drift 14s linear infinite}
+@keyframes drift{to{background-position:0 300px,45px 320px,20px 360px,70px 340px}}
+
+/* toxic: murky green with rising bubbles */
+body.t-toxic{background:linear-gradient(180deg,#0f1e0c 0%,#25491a 55%,#3d7a1f 100%) fixed}
+body.t-toxic #fx::before{background:radial-gradient(circle,rgba(170,255,90,.55) 0 5px,transparent 6px) 0 0/140px 160px,radial-gradient(circle,rgba(120,255,60,.4) 0 8px,transparent 9px) 60px 80px/220px 240px;animation:bubble 9s linear infinite}
+body.t-toxic #fx::after{background:radial-gradient(70% 40% at 50% 110%,rgba(140,255,70,.35),transparent 70%)}
+@keyframes bubble{to{background-position:0 -320px,60px -400px}}
+
+/* cursed: dark violet, pulsing red vignette */
+body.t-cursed{background:linear-gradient(180deg,#0f0820 0%,#2a1248 55%,#3a0f2b 100%) fixed}
+body.t-cursed #fx::before{background:radial-gradient(110% 80% at 50% 50%,transparent 45%,rgba(200,30,70,.42));animation:curse 3.2s ease-in-out infinite}
+body.t-cursed #fx::after{inset:-20%;background:radial-gradient(40% 30% at 30% 60%,rgba(150,80,255,.30),transparent 60%),radial-gradient(35% 28% at 75% 35%,rgba(150,80,255,.25),transparent 60%);filter:blur(30px);animation:aur 16s ease-in-out infinite alternate}
+@keyframes curse{0%,100%{opacity:.55}50%{opacity:1}}
+</style>
+</head>
+<body>
+<div id="fx"></div>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="hero-in">
+      <div class="icon"></div>
+      <div>
+        <h1 id="gname">Roll A Gnome</h1>
+        <p>Weather sentinel &middot; <span id="who">-</span></p>
+        <div class="chips">
+          <span class="chip"><span class="dot" id="hd-worker"></span><span id="ht-worker">Connecting&hellip;</span></span>
+          <span class="chip"><span class="dot" id="hd-read"></span><span id="ht-read">-</span></span>
+          <span class="chip"><span class="dot" id="hd-lock"></span><span id="ht-lock">-</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <h2>Weather board</h2>
+      <div class="board">
+        <div class="ringbox">
+          <svg viewBox="0 0 170 170"><circle class="trk" cx="85" cy="85" r="72"/><circle class="bar" id="bar" cx="85" cy="85" r="72" stroke="#ffc83d"/></svg>
+          <div class="ringtxt"><b id="clock">--:--</b><span id="clockLbl">WAITING</span></div>
+        </div>
+        <div style="flex:1;min-width:190px">
+          <span class="badge none" id="badge">NO BOARD</span>
+          <div class="evname" id="evname">Nothing in view</div>
+          <div class="sub" id="evsub">Keep the weather sign somewhere on screen in Roblox.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="card-frame">
+      <h2>What the sentinel sees</h2>
+      <img class="frame" id="frame" alt="Latest Roblox frame">
+      <div class="sub" id="frameSub" style="margin-top:8px">Latest frame from the window with the board.</div>
+    </div>
+
+    <div class="card" id="card-inst">
+      <h2>Roblox instances</h2>
+      <div id="insts"></div>
+      <div class="row">
+        <button class="btn go" data-act="show_all">Show all</button>
+        <button class="btn" data-act="hide_all">Hide all</button>
+        <button class="btn danger" data-act="close_all" data-confirm="Close every Roblox window?">Close all</button>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn big warn" id="launch" data-act="launch">＋ Open new instance</button>
+        <div class="sub" id="launchSub" style="margin-top:8px;text-align:center">Switch to the account you want first, then launch.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Sentinel health</h2>
+      <div class="hl"><span>Worker</span><b id="h-worker">-</b></div>
+      <div class="hl"><span>Last screen read</span><b id="h-read">-</b></div>
+      <div class="hl"><span>Board last seen</span><b id="h-seen">-</b></div>
+      <div class="hl"><span>Running for</span><b id="h-up">-</b></div>
+      <div class="hl"><span>Multi-instance lock</span><b id="h-lock">-</b></div>
+      <div class="hl"><span>Hotkeys</span><b id="h-keys">-</b></div>
+      <div class="share" id="share">📶 Share on your Wi-Fi (view-only, needs the key in the link):
+        <code id="shareUrl"></code><button class="btn blue" id="copyShare" style="padding:4px 12px;font-size:13px">Copy link</button></div>
+      <div class="sw">
+        <button class="btn" id="bPause" data-act="toggle_pause">Pause</button>
+        <button class="btn" id="bMute" data-act="toggle_mute">Mute alerts</button>
+      </div>
+    </div>
+
+  </div>
+  <div class="foot">🌱 Everything here runs on this PC only.</div>
+  <div class="previews">Preview the scenes: <button class="pv" data-demo="aurora" title="Aurora">🌌</button><button class="pv" data-demo="solar flare" title="Solar flare">☀️</button><button class="pv" data-demo="candy land" title="Candy land">🍬</button><button class="pv" data-demo="lightning storm" title="Lightning storm">⚡</button><button class="pv" data-demo="toxic" title="Toxic">☣️</button><button class="pv" data-demo="cursed" title="Cursed">💀</button><button class="pv" data-demo="" title="Back to live">↺</button></div>
+</div>
+<div id="toast"></div>
+
+<script>
+const TOKEN = document.querySelector('meta[name=sentinel-token]').content;
+const $ = id => document.getElementById(id);
+let S = null, skew = 0, totals = {}, frameTick = 0;
+const THEMES = {
+  "aurora":          {cls: "t-aurora",    color: "#5cffc4", emoji: "🌌"},
+  "solar flare":     {cls: "t-solar",     color: "#ff8a2b", emoji: "☀️"},
+  "candy land":      {cls: "t-candy",     color: "#ff5fa8", emoji: "🍬"},
+  "lightning storm": {cls: "t-lightning", color: "#8fb8ff", emoji: "⚡"},
+  "toxic":           {cls: "t-toxic",     color: "#8dff4d", emoji: "☣️"},
+  "cursed":          {cls: "t-cursed",    color: "#b06bff", emoji: "💀"},
+};
+let DEMO = new URLSearchParams(location.search).get("demo") || "", demoEnd = Date.now()/1000 + 240;
+const emojiFor = n => (THEMES[(n||"").toLowerCase()] || {emoji: "✨"}).emoji;
+function boardNow(){
+  if (DEMO) return {kind: "active", name: DEMO, target: demoEnd, seen: Date.now()/1000 + skew};
+  return S.board;
+}
+
+const title = s => (s||"").replace(/\b\w/g, c => c.toUpperCase());
+const mmss = n => { n = Math.max(0, Math.round(n)); const h = Math.floor(n/3600), m = Math.floor(n%3600/60), s = n%60;
+  return (h ? h+":"+String(m).padStart(2,"0") : m) + ":" + String(s).padStart(2,"0"); };
+const ago = t => { if (!t) return "never"; const d = Math.max(0, Date.now()/1000 + skew - t); return d < 2 ? "just now" : d < 90 ? Math.round(d)+"s ago" : d < 5400 ? Math.round(d/60)+" min ago" : Math.round(d/3600)+" h ago"; };
+const dur = n => { n = Math.round(n); const h = Math.floor(n/3600), m = Math.floor(n%3600/60); return h ? h+"h "+m+"m" : m+"m "+(n%60)+"s"; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast.h); toast.h=setTimeout(()=>t.classList.remove("show"),2400); }
+
+async function act(action, extra={}){
+  try{
+    const r = await fetch("/api/action",{method:"POST",headers:{"Content-Type":"application/json","X-Token":TOKEN},body:JSON.stringify({action,...extra})});
+    const j = await r.json();
+    toast(j.ok===false ? ("⚠ "+(j.error||"failed")) : (j.message||"Done"));
+    poll();
+  }catch(e){ toast("⚠ can't reach the sentinel"); }
+}
+document.addEventListener("click", e => {
+  const dm = e.target.closest("[data-demo]");
+  if (dm){ DEMO = dm.dataset.demo; demoEnd = Date.now()/1000 + 240; render(); return; }
+  if (e.target.id === "copyShare" && S && S.share){ navigator.clipboard.writeText(S.share).then(()=>toast("Link copied"), ()=>toast("Copy it by hand")); return; }
+  const b = e.target.closest("[data-act]"); if(!b || b.disabled) return;
+  if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
+  act(b.dataset.act, b.dataset.hwnd ? {hwnd:+b.dataset.hwnd} : {});
+});
+
+function render(){
+  if(!S) return;
+  const now = Date.now()/1000 + skew, h = S.health;
+  document.body.classList.toggle("ro", !!S.readonly);
+  if (S.share){ $("share").style.display = "block"; $("shareUrl").textContent = S.share; }
+  else $("share").style.display = "none";
+  $("gname").textContent = S.game.name || "Roll A Gnome";
+  $("who").textContent = S.sentinel;
+
+  // header chips
+  const w = h.worker_ok;
+  $("hd-worker").className = "dot " + (w===true?"ok":w===false?"bad":"warn");
+  $("ht-worker").textContent = w===true ? "Worker connected" : w===false ? "Worker not reachable" : "No report yet";
+  const stale = h.last_read && now - h.last_read > 20;
+  $("hd-read").className = "dot " + (h.paused?"warn":(!h.last_read||stale?"bad":"ok"));
+  $("ht-read").textContent = h.paused ? "Paused" : h.last_read ? "Reading · " + ago(h.last_read) : "Waiting for Roblox";
+  const lockOk = h.lock==="held";
+  $("hd-lock").className = "dot " + (lockOk?"ok":h.lock==="off"?"":"warn");
+  $("ht-lock").textContent = h.lock==="held" ? "Multi-instance on" : h.lock==="waiting" ? "Close Roblox to switch on" : h.lock==="failed" ? "Lock failed" : "Multi-instance off";
+
+  // board
+  const b = boardNow(), bar = $("bar"), C = 2*Math.PI*72;
+  const theme = b.kind === "active" ? THEMES[(b.name||"").toLowerCase()] : null;
+  bar.style.strokeDasharray = C;
+  let left = null, key = null;
+  if (b.kind !== "none"){ left = b.target ? b.target - now : null; key = b.kind + ":" + b.name; }
+  if (b.kind === "none" || (left !== null && left < -5)){
+    $("badge").className = "badge none"; $("badge").textContent = left !== null && b.kind==="active" ? "ENDED" : "NO BOARD";
+    $("evname").textContent = b.kind==="none" ? "Nothing in view" : title(b.name);
+    $("evsub").textContent = b.kind==="none" ? "Keep the weather sign somewhere on screen in Roblox." : "Waiting for the next sign reading…";
+    $("clock").textContent = "--:--"; $("clockLbl").textContent = "WAITING"; bar.style.strokeDashoffset = C;
+  } else {
+    const isA = b.kind === "active";
+    $("badge").className = "badge " + (isA?"active":"next"); $("badge").textContent = isA ? "EVENT ACTIVE" : "NEXT EVENT";
+    $("evname").textContent = emojiFor(b.name) + " " + title(b.name);
+    $("evsub").textContent = (isA ? "Ends " : "Starts ") + (left===null ? "soon" : "in " + mmss(left)) + " · seen " + ago(b.seen);
+    if (left !== null){
+      totals[key] = Math.max(totals[key] || 0, left);
+      const frac = Math.min(1, Math.max(0, left / (totals[key] || 1)));
+      $("clock").textContent = mmss(left); $("clockLbl").textContent = isA ? "LEFT" : "TO START";
+      bar.style.stroke = (isA && theme) ? theme.color : (isA ? "#ffc83d" : "#2f8fe8"); bar.style.strokeDashoffset = C * (1 - frac);
+    } else { $("clock").textContent = "--:--"; $("clockLbl").textContent = isA ? "ACTIVE" : "UPCOMING"; bar.style.strokeDashoffset = 0; }
+  }
+
+  // scene for the event that's on right now (only while it's actually running)
+  const sceneOn = theme && !(left !== null && left < -5);
+  document.body.className = document.body.className.replace(/\bt-\S+/g, "").trim();
+  if (sceneOn) document.body.classList.add(theme.cls);
+  document.title = sceneOn ? theme.emoji + " " + title(b.name) + (left !== null ? " " + mmss(left) : "") : "Gnome Sentinel";
+
+  // instances
+  const box = $("insts");
+  if (!S.instances.length) box.innerHTML = '<div class="empty">No Roblox window found yet.<br>Open one below, or start Roblox.</div>';
+  else box.innerHTML = S.instances.map(i => {
+    const isB = i.role === "board";
+    const pills = (isB?'<span class="pill isb">BOARD</span>':'') + (i.minimised?'<span class="pill mini">MINIMISED</span>':'') + (i.hidden?'<span class="pill hidden">HIDDEN</span>':'');
+    const btn = i.minimised ? `<button class="btn warn" data-act="restore" data-hwnd="${i.hwnd}">Restore</button>`
+      : i.hidden ? `<button class="btn go" data-act="show" data-hwnd="${i.hwnd}">Show</button>`
+      : `<button class="btn" data-act="hide" data-hwnd="${i.hwnd}">Hide</button>`;
+    const close = `<button class="btn danger" data-act="close" data-hwnd="${i.hwnd}" data-confirm="Close this Roblox window?">Close</button>`;
+    return `<div class="inst"><span class="dot ${isB?'ok':''}" style="background:${isB?'':'#2f8fe8'}"></span>
+      <div class="meta"><div class="t">${isB?'Weather board window':'Roblox window'}${pills}</div><div class="s">${esc(i.title||'?')}</div></div>${btn}${close}</div>`;
+  }).join("");
+  $("launch").disabled = !S.can_launch;
+  $("launchSub").textContent = S.can_launch ? "Switch to the account you want first, then launch." : "Set LAUNCH_URL in .env to enable this.";
+
+  // health
+  $("h-worker").textContent = w===true ? "Connected · " + ago(h.worker_last) : w===false ? "Failing · " + (h.worker_msg||"") : "No report yet";
+  $("h-read").textContent = h.paused ? "Paused" : ago(h.last_read);
+  $("h-seen").textContent = ago(h.board_seen);
+  $("h-up").textContent = dur(now - h.started);
+  $("h-lock").textContent = h.lock==="held" ? "On" : h.lock==="waiting" ? "Waiting - close Roblox first" : h.lock==="failed" ? "Failed" : "Off";
+  $("h-keys").textContent = h.hotkey + " · " + h.panel_hotkey;
+  $("bPause").textContent = h.paused ? "Resume" : "Pause"; $("bPause").classList.toggle("on", h.paused);
+  $("bMute").textContent = h.muted ? "Unmute alerts" : "Mute alerts"; $("bMute").classList.toggle("on", h.muted);
+}
+
+async function poll(){
+  try{
+    const r = await fetch("/api/state",{cache:"no-store"}); S = await r.json();
+    skew = S.now - Date.now()/1000; render();
+  }catch(e){ $("hd-worker").className="dot bad"; $("ht-worker").textContent="Sentinel not running"; }
+}
+function refreshFrame(){ if(document.hidden) return; const i=$("frame"); i.onerror=()=>{$("frameSub").textContent="No frame yet — waiting for Roblox."}; i.onload=()=>{$("frameSub").textContent="Latest frame from the window with the board."}; i.src="/api/frame.jpg?"+(++frameTick); }
+poll(); setInterval(poll,1000); setInterval(render,250); refreshFrame(); setInterval(refreshFrame,2500);
+</script>
+</body>
+</html>

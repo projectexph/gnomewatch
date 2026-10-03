@@ -1,0 +1,3 @@
+"""The version of this copy of Gnomewatch, and what changed in it. packaging/release.py rewrites both when you publish."""
+VERSION = "1.1.2"
+NOTES = "\u2022 Board watching: reads the countdown even when the first look misses it, and restarts a screen capture that stalls\n\u2022 Event starts are reported to your weather bot through the Gnomewatch server, once, even if several people are running it\n\u2022 Fixed accounts showing 'working on it' or 'loading' after the game had already loaded\n\u2022 Accounts are marked in game from Roblox's own log, with a safe fallback\n\u2022 Blizzard now has its own colour and icon"      # shown once after an update, one bullet per line

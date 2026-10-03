@@ -1,0 +1,14 @@
+# Gnomewatch runs on Windows 10/11, Python 3.12
+pillow>=12
+psutil>=7
+pywin32>=312
+winsdk>=1.0.0b10
+mss>=10
+PyGetWindow>=0.0.9
+windows-capture>=2.0
+numpy>=2
+opencv-python>=4.10
+pystray>=0.19
+certifi
+pyinstaller>=6.10          # only to build the installer
+quickjs>=1.19              # only for the key-server tests

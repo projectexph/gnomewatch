@@ -1,0 +1,16 @@
+name = "gnomewatch-keys"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+KEY_HOURS = "24"
+MAX_DEVICES = "1"
+# optional: only /getkey in this channel (right-click the channel in Discord > Copy Channel ID)
+ALLOWED_CHANNEL_ID = ""
+# optional: forward event starts to a weather bot (its password is the secret WEATHER_SECRET)
+WEATHER_URL = ""
+
+# npx wrangler kv namespace create KEYS   -> paste the id below
+[[kv_namespaces]]
+binding = "KEYS"
+id = "PASTE_KV_NAMESPACE_ID_HERE"

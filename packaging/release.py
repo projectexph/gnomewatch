@@ -23,6 +23,7 @@ APP = os.path.dirname(HERE)
 KEYS = os.path.join(APP, "gnomewatch-keys")
 CFG = os.path.join(HERE, "release.json")
 EXE = os.path.join(HERE, "dist", "Gnomewatch-Setup.exe")
+APPZIP = os.path.join(HERE, "dist", "Gnomewatch-App.zip")                     # the app itself; the installer downloads it from the release
 VARS = ("LATEST_VERSION", "MIN_VERSION", "DOWNLOAD_URL", "DOWNLOAD_SHA256", "RELEASE_NOTES")
 
 
@@ -86,7 +87,8 @@ if a.create:
 tag = "v" + version
 url = f"https://github.com/{repo}/releases/download/{tag}/Gnomewatch-Setup.exe"
 notes = "; ".join(bullets)
-run([gh, "release", "create", tag, EXE, "--repo", repo, "--title", f"Gnomewatch {version}", "--notes", notes])
+assets = [EXE] + ([APPZIP] if os.path.isfile(APPZIP) else [])
+run([gh, "release", "create", tag, *assets, "--repo", repo, "--title", f"Gnomewatch {version}", "--notes", notes])
 
 print("4/5  telling the key server")
 toml = os.path.join(KEYS, "wrangler.toml")

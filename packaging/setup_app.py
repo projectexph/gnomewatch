@@ -1,12 +1,21 @@
-"""Gnomewatch one-click installer. Extracts the app to %LOCALAPPDATA%\\Gnomewatch, adds Desktop + Start-menu shortcuts that start it
-with no console window, and opens it. Running it again updates the program and keeps everyone's settings."""
+"""Gnomewatch installer. Downloads the app (checking its SHA-256), puts it in %LOCALAPPDATA%\\Gnomewatch, adds Desktop + Start-menu shortcuts that
+start it with no console window, and opens it. Running it again updates the program and keeps everyone's settings.
+
+This is a SMALL program on purpose: the app itself is a separate zip on the release page. (Packing the whole app inside one exe is what made
+antivirus tools call it a virus.) For no-internet installs, put Gnomewatch-App.zip next to this file and it uses that instead."""
+import ctypes
+import hashlib
+import json
 import os
 import subprocess
 import sys
 import tempfile
 import threading
 import tkinter as tk
+import urllib.request
+import uuid
 import zipfile
+from ctypes import wintypes
 from tkinter import ttk
 
 NOWIN = 0x08000000
@@ -21,37 +30,139 @@ def res(name):
     return os.path.join(base, name)
 
 
-def hidden(cmd):
-    return subprocess.run(cmd, creationflags=NOWIN, capture_output=True, text=True)
+def manifest():
+    """{"url", "sha256", "size", "version"} for the app zip when this is the small web installer; None when the app is bundled instead."""
+    path = (os.environ.get("GW_PAYLOAD_JSON") if TEST else None) or res("payload.json")
+    try:
+        return json.load(open(path, encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def get_payload(progress):
+    """Path to the app zip: downloaded and verified (web installer), found next to this file (offline), or bundled."""
+    man = manifest()
+    if man:
+        url = str(man["url"])
+        if not (url.startswith("https://") or (TEST and url.startswith("http://127.0.0.1"))):
+            raise RuntimeError("The download link isn't a secure link.")
+        folder = os.path.join(tempfile.gettempdir(), "gnomewatch-setup")
+        os.makedirs(folder, exist_ok=True)
+        dest = os.path.join(folder, f"Gnomewatch-App-{man.get('version', 'x')}.zip")
+        want = str(man["sha256"]).lower()
+        if os.path.isfile(dest) and sha256_file(dest) == want:                      # a retry: it's already here and correct
+            return dest
+        part = dest + ".part"
+        h, done = hashlib.sha256(), 0
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Gnomewatch-Setup"})
+            with urllib.request.urlopen(req, timeout=30) as r, open(part, "wb") as f:
+                total = int(r.headers.get("Content-Length") or man.get("size") or 0)
+                while True:
+                    chunk = r.read(1 << 18)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    h.update(chunk)
+                    done += len(chunk)
+                    progress(6 + 54 * (done / total if total else 0.5),
+                             f"Downloading Gnomewatch...  {done / 1e6:.0f} of {total / 1e6:.0f} MB" if total else "Downloading Gnomewatch...")
+        except Exception:
+            _remove(part)
+            raise RuntimeError("Couldn't download Gnomewatch. Check your internet connection and try again.")
+        if h.hexdigest() != want:
+            _remove(part)
+            raise RuntimeError("The download didn't match what was published, so it was thrown away. Try again.")
+        os.replace(part, dest)
+        return dest
+    for cand in (os.path.join(os.path.dirname(os.path.abspath(sys.executable)), "Gnomewatch-App.zip"), res("payload.zip")):
+        if os.path.isfile(cand):
+            return cand
+    raise RuntimeError("This installer has no app inside and no download address.")
+
+
+def _remove(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
 
 
 def stop_running():
-    """Close a running Gnomewatch (and its restarter) so its files can be replaced."""
+    """Close a running Gnomewatch (and its restarter) so its files can be replaced. Only touches programs that live in the install folder."""
+    _remove(os.path.join(DEST, "running.flag"))                            # a deliberate stop is not a crash
     try:
-        os.remove(os.path.join(DEST, "running.flag"))                      # a deliberate stop is not a crash
-    except OSError:
+        import psutil
+    except ImportError:
+        return
+    mine = os.path.normcase(os.path.abspath(DEST))
+    victims = []
+    for p in psutil.process_iter(["pid", "name", "exe", "cmdline"]):
+        try:
+            name = (p.info["name"] or "").lower()
+            if name == "wscript.exe" and any("gnomewatch.vbs" in (c or "").lower() for c in (p.info["cmdline"] or [])):
+                victims.append(p)                                          # the restarter goes first, or it would start the app again
+            elif name == "gnomewatch.exe" and os.path.normcase(os.path.abspath(p.info["exe"] or "")).startswith(mine):
+                victims.append(p)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    victims.sort(key=lambda p: (p.info["name"] or "").lower() != "wscript.exe")
+    for p in victims:
+        try:
+            p.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    psutil.wait_procs(victims, timeout=6)
+
+
+def known_folder(folder_id, fallback):
+    """A Windows special folder (like the real Desktop, even when OneDrive moved it), without running any script."""
+    try:
+        g = uuid.UUID(folder_id)
+
+        class GUID(ctypes.Structure):
+            _fields_ = [("a", wintypes.DWORD), ("b", wintypes.WORD), ("c", wintypes.WORD), ("d", ctypes.c_ubyte * 8)]
+
+        gid = GUID(g.time_low, g.time_mid, g.time_hi_version, (ctypes.c_ubyte * 8).from_buffer_copy(g.bytes[8:]))
+        out = ctypes.c_wchar_p()
+        if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(gid), 0, None, ctypes.byref(out)) == 0:
+            path = out.value
+            ctypes.windll.ole32.CoTaskMemFree(out)
+            if path:
+                return path
+    except Exception:
         pass
-    hidden(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command",
-            "Get-CimInstance Win32_Process -Filter \"Name='wscript.exe'\" | Where-Object { $_.CommandLine -like '*Gnomewatch.vbs*' } | "
-            "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"])
-    hidden(["taskkill", "/F", "/IM", "Gnomewatch.exe"])
+    return fallback
 
 
 def make_shortcut(path, target, args, icon, workdir):
-    vbs = (f'Set s = CreateObject("WScript.Shell")\nSet l = s.CreateShortcut("{path}")\nl.TargetPath = "{target}"\n'
-           f'l.Arguments = "{args}"\nl.WorkingDirectory = "{workdir}"\nl.IconLocation = "{icon}"\nl.Description = "Gnomewatch"\nl.Save\n')
-    f = os.path.join(tempfile.gettempdir(), "gw_lnk.vbs")
-    with open(f, "w", encoding="utf-8") as h:
-        h.write(vbs)
-    hidden(["wscript.exe", "//B", f])
-    os.remove(f)
+    """A .lnk file, made through Windows' own shortcut object (no script is written or run)."""
+    import win32com.client
+    sh = win32com.client.Dispatch("WScript.Shell")
+    lnk = sh.CreateShortcut(path)
+    lnk.TargetPath = target
+    lnk.Arguments = args
+    lnk.WorkingDirectory = workdir
+    lnk.IconLocation = icon
+    lnk.Description = "Gnomewatch"
+    lnk.Save()
 
 
 def install(progress):
-    progress(2, "Closing Gnomewatch if it is running...")
+    progress(2, "Getting ready...")
+    zpath = get_payload(progress)                                           # the old Gnomewatch keeps running while this downloads
+    progress(62, "Closing Gnomewatch if it is running...")
     if not TEST:
         stop_running()
-    zf = zipfile.ZipFile(res("payload.zip"))
+    zf = zipfile.ZipFile(zpath)
     names = [n for n in zf.namelist() if not n.endswith("/")]
     os.makedirs(DEST, exist_ok=True)
     for i, n in enumerate(names):
@@ -67,20 +178,18 @@ def install(progress):
                     break
                 out.write(chunk)
         if i % 12 == 0:
-            progress(5 + 80 * i / len(names), "Installing...")
-    progress(88, "Adding shortcuts...")
+            progress(64 + 24 * i / len(names), "Installing...")
+    progress(90, "Adding shortcuts...")
     ico = os.path.join(DEST, "assets", "brand", "gnomewatch.ico")
     vbs = os.path.join(DEST, "Gnomewatch.vbs")
-    sysroot = os.environ.get("SystemRoot", r"C:\Windows")
-    wscript = os.path.join(sysroot, "System32", "wscript.exe")
-    desktop = os.path.join(TEST, "Desktop") if TEST else subprocess.run(["powershell", "-NoProfile", "-Command", "[Environment]::GetFolderPath('Desktop')"], capture_output=True, text=True,
-                             creationflags=NOWIN).stdout.strip() or os.path.join(os.path.expanduser("~"), "Desktop")
+    wscript = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "wscript.exe")
+    desktop = os.path.join(TEST, "Desktop") if TEST else known_folder("B4BFCC3A-DB2C-424C-B029-7FE99A87C641", os.path.join(os.path.expanduser("~"), "Desktop"))
     start = os.path.join(TEST, "Start") if TEST else os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs", "Gnomewatch")
     os.makedirs(start, exist_ok=True)
     os.makedirs(desktop, exist_ok=True)
-    make_shortcut(os.path.join(desktop, "Gnomewatch.lnk"), wscript, f'//B \\"{vbs}\\"'.replace('\\"', '""'), ico, DEST)
-    make_shortcut(os.path.join(start, "Gnomewatch.lnk"), wscript, f'//B \\"{vbs}\\"'.replace('\\"', '""'), ico, DEST)
-    progress(94, "Registering the uninstaller...")
+    make_shortcut(os.path.join(desktop, "Gnomewatch.lnk"), wscript, f'//B "{vbs}"', ico, DEST)
+    make_shortcut(os.path.join(start, "Gnomewatch.lnk"), wscript, f'//B "{vbs}"', ico, DEST)
+    progress(96, "Registering the uninstaller...")
     try:
         if TEST:
             raise OSError
@@ -177,7 +286,11 @@ class Setup:
 
 if __name__ == "__main__":
     if "--silent" in sys.argv:                                  # no window: install, then start it (not in test mode)
-        install(lambda v, m: None)
+        try:
+            install(lambda v, m: None)
+        except Exception as e:                                  # a windowed program would otherwise pop up a crash box
+            sys.stderr.write("install failed: " + str(e) + chr(10))
+            sys.exit(1)
         if not TEST:
             launch()
     else:

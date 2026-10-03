@@ -62,10 +62,30 @@ with zipfile.ZipFile(payload, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
             z.write(full, os.path.relpath(full, appdir))
 print("payload:", round(os.path.getsize(payload) / 1e6, 1), "MB")
 
+# The app is its own download (Gnomewatch-App.zip); the installer is a small program that fetches it and checks its SHA-256. Packing the whole
+# app inside one exe is what antivirus tools flagged as a virus. --offline still builds the big all-in-one installer, for no-internet use.
+import hashlib
+sys.path.insert(0, APP)
+from gw_version import VERSION
+app_zip = os.path.join(DIST, "Gnomewatch-App.zip")
+shutil.copy(payload, app_zip)
+zsha = hashlib.sha256(open(app_zip, "rb").read()).hexdigest()
+repo = os.environ.get("GW_REPO") or (json.load(open(os.path.join(HERE, "release.json"))).get("repo") if os.path.exists(os.path.join(HERE, "release.json")) else "")
+offline = "--offline" in sys.argv or not repo
+data_args = []
+if offline:
+    print("(offline installer: the app is packed inside it, so it is large)")
+    data_args += ["--add-data", f"{payload}{SEP}."]
+else:
+    man = os.path.join(WORK, "payload.json")
+    json.dump({"url": f"https://github.com/{repo}/releases/download/v{VERSION}/Gnomewatch-App.zip", "sha256": zsha, "size": os.path.getsize(app_zip),
+               "version": VERSION}, open(man, "w"))
+    data_args += ["--add-data", f"{man}{SEP}."]
 print("building the installer ...")
 cmd = PY + ["--windowed", "--onefile", "--name", "Gnomewatch-Setup", "--icon", os.path.join(APP, "assets", "brand", "gnomewatch.ico"),
-            "--distpath", DIST, "--workpath", os.path.join(WORK, "pyi2"), "--specpath", WORK,
-            "--add-data", f"{payload}{SEP}.", "--add-data", f"{os.path.join(APP, 'assets', 'brand', 'logo_256.png')}{SEP}.",
+            "--distpath", DIST, "--workpath", os.path.join(WORK, "pyi2"), "--specpath", WORK, "--hidden-import", "psutil", "--hidden-import", "win32com.client",
+            "--hidden-import", "pythoncom", "--exclude-module", "numpy", "--exclude-module", "cv2", "--exclude-module", "PIL",
+            *data_args, "--add-data", f"{os.path.join(APP, 'assets', 'brand', 'logo_256.png')}{SEP}.",
             "--add-data", f"{os.path.join(APP, 'assets', 'brand', 'gnomewatch.ico')}{SEP}.", os.path.join(HERE, "setup_app.py")]
 subprocess.check_call(cmd, cwd=APP)
 print("done:", os.path.join(DIST, "Gnomewatch-Setup.exe"), round(os.path.getsize(os.path.join(DIST, "Gnomewatch-Setup.exe")) / 1e6, 1), "MB")
